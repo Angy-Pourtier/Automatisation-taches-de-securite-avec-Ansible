@@ -1,0 +1,33 @@
+- name: Préparation de la machine avec Docker, Ansible et OpenSSH
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Mettre à jour les paquets
+      apt:
+        update_cache: yes
+
+    - name: Mettre à niveau les paquets
+      apt:
+        upgrade: dist
+        update_cache: yes
+
+    - name: Installer OpenSSH
+      apt:
+        name: openssh-server
+        state: present
+
+#    - name: Installer Ansible
+#      apt:
+#        name: ansible
+#        state: present
+
+    - name: Installer Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Démarrer le service Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
