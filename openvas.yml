@@ -1,0 +1,24 @@
+- name: Configuration OpenVAS
+  hosts: local
+  become: true
+  tasks:
+    - name: Lancer le conteneur OpenVAS
+      docker_container:
+        name: openvas
+        image: mikesplain/openvas
+        ports:
+          - "443:443"
+        state: started
+        restart_policy: always
+
+    - name: Changer le mot de passe de l'utilisateur admin
+      command: docker exec openvas openvasmd --user=admin --new-password=angy0212
+
+    - name: Vérifier si l'utilisateur 'angy' existe déjà
+      command: docker exec openvas openvasmd --get-users
+      register: user_check
+      changed_when: false
+
+    - name: Créer un nouvel utilisateur si l'utilisateur 'angy' n'existe pas
+      command: docker exec openvas openvasmd --create-user=angy --password=angy0212
+      when: "'angy' not in user_check.stdout"
