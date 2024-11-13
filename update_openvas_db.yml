@@ -1,0 +1,24 @@
+- name: Mise à jour de la base de données des vulnérabilités OpenVAS
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Mettre à jour la base de données des vulnérabilités dans le conteneur OpenVAS
+      shell: |
+        docker exec openvas bash -c "
+          export FEED=feed.community.greenbone.net
+          export COMMUNITY_NVT_RSYNC_FEED=rsync://\$FEED:/nvt-feed
+          export COMMUNITY_CERT_RSYNC_FEED=rsync://\$FEED:/cert-data
+          export COMMUNITY_SCAP_RSYNC_FEED=rsync://\$FEED:/scap-data
+
+          greenbone-nvt-sync
+          openvasmd --rebuild --progress
+          greenbone-certdata-sync
+          greenbone-scapdata-sync
+          openvasmd --update --verbose --progress
+
+          /etc/init.d/openvas-manager restart
+          /etc/init.d/openvas-scanner restart
+          greenbone-scapdata-sync
+        "
+      args:
+        executable: /bin/bash
