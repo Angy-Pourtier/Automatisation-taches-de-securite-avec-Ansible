@@ -32,7 +32,7 @@ sudo ansible-playbook -i inventory.ini openvas.yml
 
 # Étape 6 : Exécution du troisième playbook
 log_message "Exécution du playbook : update_openvas_db.yml"
-sudo ansible-playbook -i inventory.ini update_openvas_db.yml
+ansible-playbook -i inventory.ini update_openvas_db.yml
 
 log_message "Toutes les étapes ont été exécutées avec succès."
 
