@@ -1,24 +1,47 @@
-- name: Mise à jour de la base de données des vulnérabilités OpenVAS
+- name: Mise à jour des flux OpenVAS
   hosts: localhost
   become: true
+  vars:
+    download_dir: "{{ playbook_dir }}"
   tasks:
-    - name: Mettre à jour la base de données des vulnérabilités dans le conteneur OpenVAS
-      shell: |
-        docker exec openvas bash -c "
-          export FEED=feed.community.greenbone.net
-          export COMMUNITY_NVT_RSYNC_FEED=rsync://\$FEED:/nvt-feed
-          export COMMUNITY_CERT_RSYNC_FEED=rsync://\$FEED:/cert-data
-          export COMMUNITY_SCAP_RSYNC_FEED=rsync://\$FEED:/scap-data
-
-          greenbone-nvt-sync
-          openvasmd --rebuild --progress
-          greenbone-certdata-sync
-          greenbone-scapdata-sync
-          openvasmd --update --verbose --progress
-
-          /etc/init.d/openvas-manager restart
-          /etc/init.d/openvas-scanner restart
-          greenbone-scapdata-sync
-        "
+    - name: Télécharger les dernières données pour les flux
+      command: docker-compose -f "{{ download_dir }}/docker-compose-22.4.yml" pull notus-data vulnerability-tests scap-data dfn-cert-data cert-bund-data report-formats data-objects
       args:
-        executable: /bin/bash
+        chdir: "{{ download_dir }}"
+
+
+    - name: Démarrer les conteneurs de données
+      command: docker-compose -f "{{ download_dir }}/docker-compose-22.4.yml" up -d notus-data vulnerability-tests scap-data dfn-cert-data cert-bund-data report-formats data-objects
+      args:
+        chdir: "{{ download_dir }}"
+
+
+    - name: Attendre la fin de la mise à jour
+      debug:
+        msg: "Attendez entre 15 et 30 minutes pour que la mise à jour soit terminée."
+
+
+    - name: Attendre la fin de la mise à jour
+      debug:
+        msg: "Le login et mot de passe s'ils n'ont pas été modifier sont admin et admin."
+
+
+    - name: Exécuter le script Connect_Login.sh
+      command: ./Connect_Login.sh
+      args:
+        chdir: "{{ playbook_dir }}"
+      register: result
+      ignore_errors: yes
+
+
+    - name: Afficher les logs du script
+      debug:
+        var: result.stdout
+
+
+    - name: Lancer Firefox manuellement après le script
+      command: xdg-open "http://localhost:9392/feedstatus"
+      async: 10
+      poll: 0
+      become: false
+      ignore_errors: yes

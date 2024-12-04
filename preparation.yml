@@ -1,4 +1,4 @@
-- name: Préparation de la machine avec Docker, Ansible et OpenSSH
+- name: Préparation de l'environnement avec Docker, Ansible et OpenSSH
   hosts: localhost
   become: true
   tasks:
@@ -6,28 +6,73 @@
       apt:
         update_cache: yes
 
-    - name: Mettre à niveau les paquets
+    - name: Installer les dépendances nécessaires
       apt:
-        upgrade: dist
-        update_cache: yes
-
-    - name: Installer OpenSSH
-      apt:
-        name: openssh-server
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
         state: present
 
-#    - name: Installer Ansible
-#      apt:
-#        name: ansible
-#        state: present
+    - name: Supprimer les paquets conflictuels Docker
+      apt:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - docker.io
+        - docker-doc
+        - podman-docker
+        - runc
+
+    - name: Ajouter la clé Docker
+      shell: |
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+rx /etc/apt/keyrings/docker.gpg
+
+    - name: Ajouter le dépôt Docker
+      shell: |
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list
+
+    - name: Mettre à jour les sources APT
+      apt:
+        update_cache: yes
 
     - name: Installer Docker
       apt:
-        name: docker.io
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
         state: present
+
+    - name: Vérifier si Docker Compose est déjà installé
+      stat:
+        path: /usr/local/bin/docker-compose
+      register: docker_compose_exists
+
+    - name: Installer Docker Compose
+      shell: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      when: not docker_compose_exists.stat.exists
+      ignore_errors: yes
+
+
+    - name: Ajouter l'utilisateur au groupe Docker
+      user:
+        name: "{{ ansible_env.USER }}"
+        groups: docker
+        append: yes
 
     - name: Démarrer le service Docker
       service:
         name: docker
         state: started
         enabled: true
+
+    - name: Installer OpenSSH
+      apt:
+        name: openssh-server
+        state: present

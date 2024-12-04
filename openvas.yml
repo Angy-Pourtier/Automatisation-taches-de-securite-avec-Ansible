@@ -1,24 +1,47 @@
-- name: Configuration OpenVAS
-  hosts: local
+- name: Configuration OpenVAS avec Docker
+  hosts: localhost
   become: true
+  vars:
+    admin_password: "admin"
+    download_dir: "{{ playbook_dir }}"
   tasks:
-    - name: Lancer le conteneur OpenVAS
-      docker_container:
-        name: openvas
-        image: mikesplain/openvas
-        ports:
-          - "443:443"
-        state: started
-        restart_policy: always
+    - name: Vérifier Docker
+      command: which docker
+      register: docker_installed
+      failed_when: docker_installed.rc != 0
 
-    - name: Changer le mot de passe de l'utilisateur admin
-      command: docker exec openvas openvasmd --user=admin --new-password=angy0212
+    - name: Vérifier Docker Compose
+      command: which docker-compose
+      register: docker_compose_installed
+      failed_when: docker_compose_installed.rc != 0
 
-    - name: Vérifier si l'utilisateur 'angy' existe déjà
-      command: docker exec openvas openvasmd --get-users
-      register: user_check
-      changed_when: false
+    - name: Rendre exécutable le script
+      command: chmod u+x setup-and-start-greenbone-community-edition.sh
+      args:
+        chdir: "{{ playbook_dir }}"
 
-    - name: Créer un nouvel utilisateur si l'utilisateur 'angy' n'existe pas
-      command: docker exec openvas openvasmd --create-user=angy --password=angy0212
-      when: "'angy' not in user_check.stdout"
+    - name: Exécuter le script de configuration OpenVAS
+      command: "./setup-and-start-greenbone-community-edition.sh '{{ admin_password }}'"
+      args:
+        chdir: "{{ playbook_dir }}"
+      ignore_errors: true
+
+    - name: Vérifier docker-compose.yml
+      stat:
+        path: "{{ download_dir }}/docker-compose-22.4.yml"
+      register: docker_compose_stat
+
+    - name: Télécharger docker-compose.yml si absent
+      get_url:
+        url: https://greenbone.github.io/docs/latest/_static/docker-compose-22.4.yml
+        dest: "{{ download_dir }}/docker-compose-22.4.yml"
+      when: not docker_compose_stat.stat.exists
+
+    - name: Démarrer les conteneurs OpenVAS
+      command: docker-compose -f "{{ download_dir }}/docker-compose-22.4.yml" up -d notus-data vulnerability-tests scap-data dfn-cert-data cert-bund-data
+      args:
+        chdir: "{{ download_dir }}"
+
+    - name: Attendre la fin de la mise à jour
+      debug:
+        msg: "Le login et mot de passe s'ils n'ont pas été modifier sont admin et admin."

@@ -1,0 +1,49 @@
+---
+# Playbook : secure_config.yml
+# Objectif : Appliquer des configurations de sécurité sur le serveur
+
+- name: Apply secure configurations
+  hosts: local
+  become: yes  # Exécuter avec des privilèges root
+  tasks:
+    # Collecte des faits sur les services
+    - name: Check for unnecessary services
+      service_facts:
+    
+    - name: Stop unnecessary services if they exist
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - telnet
+        - ftp
+        - rpcbind
+      when: ansible_services is defined and item in ansible_services.keys()
+      register: disabled_services
+      changed_when: disabled_services.results | selectattr('changed', 'equalto', true) | list | length > 0
+
+    - name: Display message if no unnecessary services are active
+      debug:
+        msg: "Aucun des services spécifiés (telnet, ftp, rpcbind) n'était actif ou disponible."
+      when: disabled_services.results | selectattr('changed', 'equalto', true) | list | length == 0
+
+    # Configurer le pare-feu UFW
+    - name: Check UFW status
+      command: ufw status verbose
+      register: ufw_status
+      ignore_errors: yes
+
+    - name: Enable UFW and allow SSH
+      ufw:
+        rule: allow
+        name: "OpenSSH"
+        port: 22
+        state: enabled
+
+    - name: Display UFW status
+      debug:
+        msg: >-
+          {{ "UFW est configuré et SSH est autorisé." if ufw_status is defined and ufw_status.rc == 0
+          else "Impossible de vérifier ou de configurer UFW. Vérifiez manuellement." }}
+

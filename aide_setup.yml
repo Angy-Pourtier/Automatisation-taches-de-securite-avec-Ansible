@@ -1,0 +1,163 @@
+---
+# Playbook : aide_setup.yml
+# Objectif : Installer et configurer AIDE pour la vérification de l'intégrité du système
+
+- name: Install and configure AIDE for system integrity
+  hosts: local
+  become: yes  # Exécuter avec des privilèges root
+  tasks:
+    # Créer un répertoire pour les logs
+    - name: Ensure AIDE setup log directory exists
+      file:
+        path: /var/log/aide/setup
+        state: directory
+        mode: '0755'
+        owner: root
+        group: adm
+
+    # Installer AIDE
+    - name: Install AIDE package
+      apt:
+        name: aide
+        state: present
+        update_cache: yes
+      register: aide_install_log
+    - name: Log installation result
+      copy:
+        content: "{{ aide_install_log }}"
+        dest: /var/log/aide/setup/install.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Vérifier si le fichier de configuration existe, sinon copier le fichier de configuration par défaut
+    - name: Ensure AIDE configuration file is in place
+      copy:
+        src: "/etc/aide/aide.conf"
+        dest: "/etc/aide/aide.conf"
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_facts['os_family'] == "Debian"
+      register: aide_config_log
+    - name: Log configuration result
+      copy:
+        content: "{{ aide_config_log }}"
+        dest: /var/log/aide/setup/config.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    - name: Informer que le processus peut être long
+      debug:
+        msg: >
+          Ce processus peut prendre un certain temps en fonction du contenu de votre système.
+          Une durée moyenne estimée est de 30 minutes à 1 heure. Veuillez patienter.
+
+
+    # Initialiser la base de données AIDE si elle n'existe pas déjà
+    - name: Initialize AIDE database
+      command: aideinit
+      args:
+        creates: /var/lib/aide/aide.db.new
+      register: aide_init_log
+    - name: Log database initialization result
+      copy:
+        content: "{{ aide_init_log.stdout }}"
+        dest: /var/log/aide/setup/db_init.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Déplacer la nouvelle base de données AIDE à son emplacement officiel
+    - name: Move the new AIDE database to the official location
+      command: mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+      when: ansible_facts['os_family'] == "Debian"
+      register: aide_db_move_log
+    - name: Log database move result
+      copy:
+        content: "{{ aide_db_move_log }}"
+        dest: /var/log/aide/setup/db_move.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Vérifier les permissions de la base de données AIDE
+    - name: Ensure AIDE database has correct permissions
+      file:
+        path: /var/lib/aide/aide.db
+        owner: _aide
+        group: _aide
+        mode: '0600'
+      register: aide_perm_log
+    - name: Log permission setup result
+      copy:
+        content: "{{ aide_perm_log }}"
+        dest: /var/log/aide/setup/permissions.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Assurez-vous que le répertoire des logs existe
+    - name: Ensure the AIDE log directory exists
+      file:
+        path: /var/log/aide
+        state: directory
+        mode: '0755'
+        owner: _aide
+        group: adm
+      register: aide_log_dir_log
+    - name: Log log directory setup result
+      copy:
+        content: "{{ aide_log_dir_log }}"
+        dest: /var/log/aide/setup/log_dir.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Vérifier la configuration d'AIDE avant d'exécuter la vérification d'intégrité
+    - name: Check AIDE configuration file for syntax errors
+      command: /usr/bin/aide --config-check --config /etc/aide/aide.conf
+      register: aide_config_check_log
+      ignore_errors: yes
+    - name: Log AIDE configuration check result
+      copy:
+        content: "{{ aide_config_check_log.stdout }}"
+        dest: /var/log/aide/aide_config_check.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    - name: Exécuter AIDE pour vérifier l'intégrité du système
+      command: aide --check --config /etc/aide/aide.conf  # Ajout explicite du fichier de configuration
+      register: aide_output
+      ignore_errors: true  # Ignore les erreurs pour éviter l'affichage en rouge
+      args:
+        chdir: /  # Exécuter la commande depuis la racine du système
+      notify:
+        - Log AIDE output
+
+    - name: Sauvegarder les résultats de la vérification AIDE dans le fichier log
+      copy:
+        content: "{{ aide_output.stdout }}"  # Contenu de la sortie de la commande AIDE
+        dest: /var/log/aide/aide_check.log
+        mode: '0644'  # Permissions du fichier log
+
+    - name: Log AIDE output
+      debug:
+        msg: "Les résultats d'AIDE ont été sauvegardés dans /var/log/aide/aide_check.log"
+
+    # Log supplémentaire pour toute erreur dans la vérification
+    - name: Log errors from AIDE check
+      copy:
+        content: "{{ aide_output.stderr }}"
+        dest: /var/log/aide/aide_check_errors.log
+        owner: root
+        group: adm
+        mode: '0644'
+
+    # Message pour indiquer que AIDE a été exécuté
+    - name: Display message indicating AIDE check is complete
+      debug:
+        msg: "AIDE a été installé, configuré, et une vérification d'intégrité a été exécutée. Consultez /var/log/aide/aide_check.log pour les résultats."
+

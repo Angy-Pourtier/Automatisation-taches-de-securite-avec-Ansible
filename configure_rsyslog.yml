@@ -1,0 +1,23 @@
+---
+- name: Installer et configurer rsyslog
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Installer rsyslog
+      apt:
+        name: rsyslog
+        state: present
+
+    - name: Vérifier le statut de rsyslog
+      service:
+        name: rsyslog
+        state: started
+        enabled: true
+
+    - name: Informer l'utilisateur
+      debug:
+        msg: >
+          Rsyslog est installé et configuré. 
+          Consultez les fichiers de log standards comme :
+          /var/log/syslog, /var/log/auth.log, ou /var/log/kern.log
+

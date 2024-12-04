@@ -1,0 +1,105 @@
+---
+# Playbook : auditd_setup.yml
+# Objectif : Installer et configurer auditd pour la détection d'intrusion et la journalisation des événements système
+
+- name: Setup auditd for intrusion detection
+  hosts: localhost
+  become: yes  # Exécuter avec des privilèges root
+  tasks:
+    # Installer auditd
+    - name: Install auditd
+      apt:
+        name: auditd
+        state: present
+        update_cache: yes
+
+    # Démarrer et activer le service auditd
+    - name: Start and enable auditd service
+      systemd:
+        name: auditd
+        state: started
+        enabled: yes
+
+    # Configurer les règles d'audit pour surveiller tout
+    - name: Configure audit rules for complete monitoring
+      blockinfile:
+        path: /etc/audit/rules.d/audit.rules
+        block: |
+          # Surveiller les fichiers systèmes critiques
+          -w /etc/ -p wa -k etc_changes
+          -w /var/log/ -p wa -k log_changes
+          -w /home/ -p wa -k home_changes
+          -w /bin/ -p wa -k bin_changes
+          -w /sbin/ -p wa -k sbin_changes
+          -w /usr/bin/ -p wa -k usr_bin_changes
+          -w /usr/sbin/ -p wa -k usr_sbin_changes
+
+          # Surveiller les actions utilisateurs et groupes
+          -w /etc/passwd -p wa -k passwd_changes
+          -w /etc/shadow -p wa -k shadow_changes
+          -w /etc/group -p wa -k group_changes
+
+          # Surveiller les connexions réseau
+          -a always,exit -F arch=b64 -S connect -S accept -S bind -S listen -k network_connections
+
+          # Surveiller les processus créés
+          -a always,exit -F arch=b64 -S execve -k process_creation
+
+          # Surveiller les connexions et sudo
+          -w /var/log/auth.log -p wa -k auth_changes
+          -w /var/log/sudo.log -p wa -k sudo_changes
+          -w /etc/sudoers -p wa -k sudo_changes
+
+          # Surveiller les tentatives de montée de privilèges
+          -a always,exit -F arch=b64 -S setuid -S setgid -k privilege_escalation
+
+          # Surveiller les modifications SELinux et AppArmor
+          -w /etc/selinux/ -p wa -k selinux_changes
+          -w /etc/apparmor/ -p wa -k apparmor_changes
+
+          # Surveiller les connexions SSH (login et logout)
+          -w /var/log/auth.log -p wa -k ssh_login_logout
+
+          # Surveiller les tentatives de connexion via SSH
+          -a always,exit -F arch=b64 -S execve -F exe=/usr/bin/ssh -k ssh_attempts
+
+          # Surveiller la création ou suppression de fichiers dans certains répertoires
+          -w /home/ -p wa -k home_changes
+          -w /etc/ -p wa -k etc_changes
+          -w /var/log/ -p wa -k log_changes
+          -w /tmp/ -p wa -k tmp_changes
+
+          # Surveiller les créations et modifications de fichiers
+          -a always,exit -F arch=b64 -S openat -S creat -S mkdir -S mknod -S link -S unlink -S rename -k file_creation_modification
+
+          # Surveiller les commandes sudo
+          -w /var/log/sudo.log -p wa -k sudo_changes
+          -w /etc/sudoers -p wa -k sudo_changes
+
+          # Surveiller la création de fichiers avec la commande "touch"
+          -a always,exit -F arch=b64 -S openat -F a0=/bin/touch -k file_touch_creation
+
+          # Surveiller les modifications dans les fichiers temporaires
+          -w /tmp/ -p wa -k tmp_changes
+
+          # Surveiller la suppression de fichiers
+          -a always,exit -F arch=b64 -S unlink -S rmdir -k file_deletion
+
+          # Surveiller la modification des fichiers de configuration du système
+          -w /etc/ -p wa -k system_config_changes
+
+          # Surveiller l'exécution de commandes systèmes sensibles
+          -a always,exit -F arch=b64 -S execve -F exe=/bin/bash -k bash_execution
+          -a always,exit -F arch=b64 -S execve -F exe=/usr/bin/nmap -k nmap_execution
+
+    # Redémarrer auditd pour appliquer les nouvelles règles
+    - name: Restart auditd
+      service:
+        name: auditd
+        state: restarted
+
+    # Message pour indiquer que auditd est prêt et que les logs peuvent être consultés
+    - name: Display a message indicating auditd is ready
+      debug:
+        msg: "Auditd est maintenant configuré et prêt. Vous pouvez consulter les logs dans /var/log/audit/audit.log."
+

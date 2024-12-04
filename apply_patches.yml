@@ -1,0 +1,107 @@
+- name: Ensure SSH keys, discover network hosts, and apply updates
+  hosts: localhost
+  become: yes
+  vars_prompt:
+    - name: ansible_become_password
+      prompt: "Enter the sudo password"
+      private: yes
+  vars:
+    updated_hosts: []
+    failed_hosts: []
+  tasks:
+    - name: Install nmap and sshpass
+      apt:
+        name:
+          - nmap
+          - sshpass
+        state: present
+        update_cache: yes
+
+    - name: Scan the network for active IPs in the range 192.168.56.0/24
+      command: nmap -sn 192.168.56.0/24
+      register: scanned_ips
+      changed_when: false
+
+    - name: Extract IP addresses from nmap scan result
+      set_fact:
+        active_ips: "{{ scanned_ips.stdout_lines | select('search', 'Nmap scan report for') | map('regex_replace', 'Nmap scan report for (.*)', '\\1') | list }}"
+
+    - name: Exclude localhost and local IPs
+      set_fact:
+        clean_ips: "{{ active_ips | reject('equalto', ansible_default_ipv4.address) | reject('equalto', '127.0.0.1') | reject('equalto', 'localhost') | list }}"
+
+    - name: Verify SSH connectivity to remote hosts
+      wait_for:
+        host: "{{ item }}"
+        port: 22
+        state: started
+        timeout: 5
+      loop: "{{ clean_ips }}"
+      register: ssh_reachability
+      ignore_errors: yes
+
+    - name: Filter reachable hosts
+      set_fact:
+        reachable_ips: "{{ ssh_reachability.results | selectattr('failed', 'equalto', false) | map(attribute='item') | list }}"
+
+
+    - name: Initialize the user_map variable
+      set_fact:
+        user_map: {}
+
+
+    - name: Detect default non-root user on reachable hosts
+      shell: |
+        awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd | head -n 1
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ item }}"
+      register: detected_users
+      loop: "{{ reachable_ips }}"
+      ignore_errors: yes
+
+    - name: Map detected users to hosts
+      set_fact:
+        user_map: "{{ user_map | combine({item.item: item.stdout}) }}"
+      loop: "{{ detected_users.results }}"
+      when: item.stdout is defined and item.stdout != ""
+
+    - name: Add localhost to user_map
+      set_fact:
+        user_map: "{{ user_map | combine({'localhost': ansible_env.USER}) }}"
+
+
+
+    - name: Apply updates and upgrades to reachable hosts
+      shell: |
+        echo "Running apt-get update..."
+        sudo apt-get update
+        echo "Running apt-get dist-upgrade -y..."
+        sudo apt-get dist-upgrade -y
+      delegate_to: "{{ item }}"
+      register: apt_upgrade
+      loop: "{{ reachable_ips + ['localhost'] }}"
+      ignore_errors: yes
+
+    - name: Collect successful updates
+      set_fact:
+        updated_hosts: "{{ updated_hosts + [item.item] }}"
+      loop: "{{ apt_upgrade.results }}"
+      when: not item.failed
+
+    - name: Collect failed updates
+      set_fact:
+        failed_hosts: "{{ failed_hosts + [item.item] }}"
+      loop: "{{ apt_upgrade.results }}"
+      when: item.failed
+
+    - name: Display successful updates
+      debug:
+        msg: "The following hosts were successfully updated: {{ updated_hosts }}"
+      when: updated_hosts | length > 0
+
+    - name: Display failed updates
+      debug:
+        msg: "The following hosts failed to update: {{ failed_hosts }}"
+      when: failed_hosts | length > 0
+

@@ -1,0 +1,73 @@
+---
+  - name: Vérification de la conformité selon les recommandations CIS
+    hosts: localhost
+    become: yes
+    vars:
+      non_conformities: []
+ 
+    tasks:
+ 
+      - name: Vérifier les permissions sur les fichiers critiques
+        stat:
+          path: "{{ item }}"
+        register: file_stat
+        loop:
+          - /etc/passwd
+          - /etc/shadow
+          - /etc/sudoers
+ 
+      - name: Enregistrer les non-conformités des permissions de fichiers
+        set_fact:
+          non_conformities: "{{ non_conformities + [ 'Permissions incorrectes sur ' + item.stat.path + ' : ' + item.stat.mode ] }}"
+        when: >
+          (item.stat.path == '/etc/passwd' and item.stat.mode != '0644') or
+          (item.stat.path == '/etc/shadow' and item.stat.mode != '0600') or
+          (item.stat.path == '/etc/sudoers' and item.stat.mode != '0440')
+        loop: "{{ file_stat.results }}"
+        loop_control:
+          label: "{{ item.stat.path }}"
+ 
+      - name: Vérifier la configuration SSH
+        command: grep -E "^PermitRootLogin" /etc/ssh/sshd_config
+        register: ssh_config
+        failed_when: false
+ 
+      - name: Enregistrer les non-conformités SSH
+        set_fact:
+          non_conformities: "{{ non_conformities + [ 'Le login root est activé dans la configuration SSH' ] }}"
+        when: "'PermitRootLogin no' not in ssh_config.stdout"
+ 
+      - name: Vérifier si le service rsyslog est actif
+        service:
+          name: rsyslog
+          state: started
+        register: rsyslog_status
+ 
+      - name: Enregistrer les non-conformités pour rsyslog
+        set_fact:
+          non_conformities: "{{ non_conformities + [ 'Le service rsyslog n''est pas en cours d''exécution' ] }}"
+        when: rsyslog_status.state != "started"
+ 
+      - name: Vérifier les utilisateurs ayant un UID 0
+        command: "awk -F':' '($3 == 0) {print $1}' /etc/passwd"
+        register: uid_0_users
+ 
+      - name: Enregistrer les non-conformités pour les utilisateurs UID 0
+        set_fact:
+          non_conformities: "{{ non_conformities + [ 'Des utilisateurs autres que root ont un UID 0 : ' + (uid_0_users.stdout_lines | join(', ')) ] }}"
+        when: uid_0_users.stdout_lines | length > 1
+ 
+      - name: Afficher les non-conformités détectées
+        debug:
+          msg: |
+            Non-conformités détectées :
+            {% for issue in non_conformities %}
+            - {{ issue }}
+            {% endfor %}
+        when: non_conformities | length > 0
+ 
+      - name: Aucune non-conformité détectée
+        debug:
+          msg: "Aucune non-conformité détectée !"
+        when: non_conformities | length == 0
+
