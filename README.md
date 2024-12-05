@@ -16,7 +16,7 @@ Dans un premier temps vous aller devoir pour récuperer ce git :
 
 
 
-Installation, Lancement et Mise en place de d'OpenVAS
+# Installation, Lancement et Mise en place de d'OpenVAS
 
 1. Préparation de l’environnement :
 
@@ -39,13 +39,18 @@ Ou lancez manuellement les étapes suivantes :
 Il est conseillez de continuer le projet pour laisser le temps au conteneur de mettre a jour la base de données ( 30min -1h30 ).
 
 Pour la prochaine fois, pour le faire manuellement : 
+
 Ouvrez Firefox, puis entrez cette url : http://localhost:9392.
+
 Ensuite connectez vous avec les identifiants : admin - admin.
+
 Aller dans l’onglet : Feed statuts
+
 Visualiser l’état de la base de données et attendez que tout soit en current avant de creer de tache.
 
 
 
+    
 2. Configuration et Sécurisation
 
   Avant d'exécuter le prochain playbook, vous devez être sûr que vos machines sur lesquelles vous souhaitez mettre à jour les package sont accessibles en ssh et sont sur le même réseau que votre machine. Ensuite sur votre machine si ce n'est déjà fait taper ces commandes sur votre machine hôte : 
@@ -119,7 +124,7 @@ Vérifiez les configurations système et droits d’accès avec compliance_check
 
   
 
-Structure des Playbooks : 
+# Structure des Playbooks : 
 
 
 preparation.yml : Préparation initiale du système (mises à jour, installation de Docker, etc.).
@@ -142,5 +147,7 @@ compliance_check.yml : Vérification de conformité du système.
 
 
 
-Auteur : Angy Pourtier
-Licence : Open Source
+
+    Auteur : Angy Pourtier
+
+    Licence : Open Source
