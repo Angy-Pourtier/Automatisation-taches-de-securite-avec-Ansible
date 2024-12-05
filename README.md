@@ -26,13 +26,11 @@ Tout cela en lancant ce script :
     sudo ./SCRIPT-1.sh
 
 
-Ou lancez manuellement les étapes suivantes :
+Ou lancez manuellement avec les commandes suivantes :
+Vous pouvez modifier le playbook openvas.yml si vous souhaitez modifier le mot de passe par default.
 
     sudo ansible-playbook -i inventory.ini preparation.yml
-
-  Vous pouvez modifier ce playbook si vous souhaitez modifier le mot de passe : 
-  sudo ansible-playbook -i inventory.ini openvas.yml
-  
+    sudo ansible-playbook -i inventory.ini openvas.yml
     ansible-playbook -i inventory.ini update_openvas_db.yml
 
 
