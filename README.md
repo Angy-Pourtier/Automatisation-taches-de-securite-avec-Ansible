@@ -10,7 +10,8 @@ Matériel et logiciel :
 
 
 Dans un premier temps vous aller devoir pour récuperer ce git : 
-git clone https://github.com/Angy-Pourtier/Automatisation-taches-de-securite-avec-Ansible.git
+
+    git clone https://github.com/Angy-Pourtier/Automatisation-taches-de-securite-avec-Ansible.git
 
 
 
