@@ -70,6 +70,7 @@ Commande à faire pour créer l’utilisateur sur les autre machine :
 
 
 Faire ceci pour chaque machine si ce n'est déjà fait la première fois :
+
     ssh-copy-id -i ~/.ssh/id_rsa.pub utilisateur@ip_de_la_machine_distante
 
 
