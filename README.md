@@ -23,7 +23,7 @@ Installation, Lancement et Mise en place de d'OpenVAS
 Ensuite la premiere étape, va etre de mettre en place une machine a jour, puis d'installer, configurer openvas et de mettre a jour sa base de données.
 Tout cela en lancant ce script : 
 
-  sudo ./SCRIPT-1.sh
+    sudo ./SCRIPT-1.sh
 
 
 Ou lancez manuellement les étapes suivantes :
