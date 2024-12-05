@@ -28,12 +28,12 @@ Tout cela en lancant ce script :
 
 Ou lancez manuellement les étapes suivantes :
 
-  sudo ansible-playbook -i inventory.ini preparation.yml
+    sudo ansible-playbook -i inventory.ini preparation.yml
 
   Vous pouvez modifier ce playbook si vous souhaitez modifier le mot de passe : 
   sudo ansible-playbook -i inventory.ini openvas.yml
   
-  ansible-playbook -i inventory.ini update_openvas_db.yml
+    ansible-playbook -i inventory.ini update_openvas_db.yml
 
 
 Il est conseillez de continuer le projet pour laisser le temps au conteneur de mettre a jour la base de données ( 30min -1h30 ).
@@ -50,7 +50,7 @@ Visualiser l’état de la base de données et attendez que tout soit en current
 
   Avant d'exécuter le prochain playbook, vous devez être sûr que vos machines sur lesquelles vous souhaitez mettre à jour les package sont accessibles en ssh et sont sur le même réseau que votre machine. Ensuite sur votre machine si ce n'est déjà fait taper ces commandes sur votre machine hôte : 
 
-  ssh-keygen -t rsa -b 2048 -f ~/.ssh/id_rsa
+    ssh-keygen -t rsa -b 2048 -f ~/.ssh/id_rsa
   
 Entrez la passphrase que vous souhaitez.
 
@@ -59,24 +59,24 @@ Entrez la passphrase que vous souhaitez.
 Il vous faudra également créer un utilisateur sur les machines distantes, du même nom que votre utilisateur avec lequel vous exécutez le playbook.
 Commande à faire pour créer l’utilisateur sur les autre machine : 
 
-  sudo adduser [nom]
-  sudo usermod -aG sudo [nom]
+    sudo adduser [nom]
+    sudo usermod -aG sudo [nom]
 
 
 
 Faire ceci pour chaque machine si ce n'est déjà fait la première fois :
-  ssh-copy-id -i ~/.ssh/id_rsa.pub utilisateur@ip_de_la_machine_distante
+    ssh-copy-id -i ~/.ssh/id_rsa.pub utilisateur@ip_de_la_machine_distante
 
 
 
 Avant d'éxécuter ce playbook modifier l'ip réseau dans le fichier pour qu'il mette a jour toute les machines sur ce réseau; Puis Exécuter le Playbook :
 
-  ansible-playbook -i inventory.ini apply_patches.yml
+    ansible-playbook -i inventory.ini apply_patches.yml
 
 
 Configurez la sécurité des services avec le playbook secure_config.yml : 
 
-  sudo ansible-playbook -i inventory.ini secure_config.yml
+    sudo ansible-playbook -i inventory.ini secure_config.yml
 
 
 
@@ -85,26 +85,26 @@ Configurez la sécurité des services avec le playbook secure_config.yml :
 
 Installez et configurez auditd pour la journalisation de la sécurité avec auditd_setup.yml :
 
-  sudo ansible-playbook -i inventory.ini auditd_setup.yml
+    sudo ansible-playbook -i inventory.ini auditd_setup.yml
 
   
 
 Cette étape peut prendre un certain temps selon le volume et le contenue de votre machine (1-2h). Il est également conseillé de le déployer en ssh pour éviter la fermeture de session automatique et engendrer des soucis. Installez et configurez AIDE pour vérifier l’intégrité des fichiers avec aide_setup.yml :
 
-  sudo ansible-playbook -i inventory.ini aide_setup.yml
+    sudo ansible-playbook -i inventory.ini aide_setup.yml
 
 
 
 Et si tout est normal alors pour mettre à jour le fichier de base de donnée :
 
  	sudo aide --update
-  sudo aide --config=/etc/aide/aide.conf --update
+    sudo aide --config=/etc/aide/aide.conf --update
 
 
 
 Configurez la centralisation des logs via configure_rsyslog.yml :
 
-  sudo ansible-playbook -i hosts.ini configure_rsyslog.yml
+    sudo ansible-playbook -i hosts.ini configure_rsyslog.yml
 
 
 
@@ -114,7 +114,7 @@ Configurez la centralisation des logs via configure_rsyslog.yml :
 
 Vérifiez les configurations système et droits d’accès avec compliance_check.yml :
 
-  sudo ansible-playbook -i inventory.ini compliance_check.yml
+    sudo ansible-playbook -i inventory.ini compliance_check.yml
 
 
   
