@@ -34,6 +34,7 @@ Vous pouvez modifier le playbook openvas.yml si vous souhaitez modifier le mot d
     ansible-playbook -i inventory.ini update_openvas_db.yml
 
 
+Ces étapes devrait vous prendre entre 5-10min.
 Il est conseillez de continuer le projet pour laisser le temps au conteneur de mettre a jour la base de données ( 30min -1h30 ).
 
 Pour la prochaine fois, pour le faire manuellement : 
