@@ -90,14 +90,18 @@ Désactive les service inutile, configure le pare feu UFW et autorise SSH avec l
 Installez et configurez auditd pour la journalisation de la sécurité avec auditd_setup.yml :
 
     sudo ansible-playbook -i inventory.ini auditd_setup.yml
+    
 Pour voir les log : 
+
     cat /var/log/audit/audit.log
   
 
 Cette étape peut prendre un certain temps selon le volume et le contenue de votre machine (1-2h). Il est également conseillé de le déployer en ssh pour éviter la fermeture de session automatique et engendrer des soucis. Installez et configurez AIDE pour vérifier l’intégrité des fichiers avec aide_setup.yml :
 
     sudo ansible-playbook -i inventory.ini aide_setup.yml
+    
 Pour voir les log : 
+
     cat /var/log/aide/aide_check.log
 
 Et si tout est normal alors pour mettre à jour le fichier de base de donnée :
@@ -110,7 +114,9 @@ Et si tout est normal alors pour mettre à jour le fichier de base de donnée :
 Configurez la centralisation des logs via configure_rsyslog.yml :
 
     sudo ansible-playbook -i hosts.ini configure_rsyslog.yml
+    
 Pour voir les log : 
+
     cat /var/log/syslog	
     cat /var/log/auth.log	
     cat /var/log/kern.log
